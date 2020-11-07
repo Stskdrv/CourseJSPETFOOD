@@ -159,8 +159,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // код урока по модалкам//
     const modalTrigger = document.querySelectorAll('[data-modal]'),
-        modal = document.querySelector('.modal'),
-        modalCloseBtn = document.querySelector('[data-close]');
+          modal = document.querySelector('.modal');
+        
 
     modalTrigger.forEach(btn => {
         btn.addEventListener('click', openModal);
@@ -179,10 +179,11 @@ window.addEventListener('DOMContentLoaded', () => {
         clearInterval(modalTimerId);
     }
 
-    modalCloseBtn.addEventListener('click', closeModal);
+    
 
     modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
+        if (e.target === modal || e.target.getAttribute('data-close') == '') {// удалили обработчик события при клинке на крестик и изменили функционал, теперь если нажмем в любую облость с атрибутом дата клосе все закроется
+
             closeModal();
         }
     });
@@ -285,44 +286,41 @@ window.addEventListener('DOMContentLoaded', () => {
 
     }
 
-    new MenuCard(
-        'img/tabs/vegy.jpg',
-        'vegy',
-        'Фитнес',
-        'Меню "Фитнес" - это новый подход к приготовлению блюд: больше свежих овощей и фруктов. Продукт активных и здоровых людей. Это абсолютно новый продукт с оптимальной ценой и высоким качеством!',
-        9,
-        '.menu .container',
-        
-    ).render();
 
-    new MenuCard(
-        'img/tabs/vegy.jpg',
-        'vegy',
-        'Фитнес',
-        'Меню "Фитнес" - это новый подход к приготовлению блюд: больше свежих овощей и фруктов. Продукт активных и здоровых людей. Это абсолютно новый продукт с оптимальной ценой и высоким качеством!',
-        9,
-        '.menu .container',
-     
-    ).render();
+    // делаем получение данных из базы, с помощью GET запроса к серверу. 59
+    const getResourse = async (url ) => {// создаем отдельную переменную для функции отправки данных на сервер, она настраивает запрос, отправляет его на сервер, получает ответ и трансформирует его в json 
 
-    new MenuCard(
-        'img/tabs/vegy.jpg',
-        'vegy',
-        'Фитнес',
-        'Меню "Фитнес" - это новый подход к приготовлению блюд: больше свежих овощей и фруктов. Продукт активных и здоровых людей. Это абсолютно новый продукт с оптимальной ценой и высоким качеством!',
-        9,
-        '.menu .container',
-        
-    ).render();
+        const res = await fetch(url);
+
+        if (!res.ok) {// обрабатываем поведение при возникновении ошибки, если что то пошло не так то выводим сообщение что именно
+            throw new Error(`Could not fetch ${url}, status: ${res.status}`);
+        }
+
+        return await res.json();// возвращается promise, который можно будет отработать методом then/ устанавливаем await , чтобы подождпть пока полученный объект будет обработак и переведен в json
+    };
+    /* getResourse('http://localhost:3000/menu')
+        .then(data => {
+            data.forEach(({img, altimg, title, descr, price}) => { // декструктуризация объекта, когда мы вытвскиваем отдельные свойства в качестве отдельных переменных. 
+                new MenuCard(img, altimg, title, descr, price, '.menu .container').render();
+            });
+        }); *///закомментирована, тк ниже реализуется через библиотеку axious
+
+        axios.get('http://localhost:3000/menu')
+            .then(data =>  {
+                data.data.forEach(({img, altimg, title, descr, price}) => { // декструктуризация объекта, когда мы вытвскиваем отдельные свойства в качестве отдельных переменных. 
+                new MenuCard(img, altimg, title, descr, price, '.menu .container').render();
+                });
+            }); 
+    
     
 
-   //  Работа с формами, отправка данных на сервер///
+/*    //  Работа с формами, отправка данных на сервер///
 
    const forms = document.querySelectorAll('form');
 
    const message = {
 
-        loading: 'Загрузка',
+        loading: '/icons/spinner.svg',
         success: 'Спасибо! Скоро с Вами свяжутся!',
         failure: 'Что то пошло не так...',
     };
@@ -335,11 +333,14 @@ window.addEventListener('DOMContentLoaded', () => {
        form.addEventListener('submit', (e) => { // для отмены стандартного поведения браузера (перезагрузки страницы) добавляем аргумент e(event) дла дальнейшей отмены стандартного поведения страницы
             e.preventDefault();// всегда в аджакс запросах отменяем поведение страницы
 
-            const statusMessage = document.createElement('div');// реализуем вывод сообщения пользователю через создание нового блока и добавления к форме после процесса отправки.
-            statusMessage.classList.add('status');
-            statusMessage.textContent = message.loading;
-            form.append(statusMessage);
-
+            const statusMessage = document.createElement('img');// реализуем вывод сообщения пользователю через создание нового блока img и добавления к форме после процесса отправки.
+            statusMessage.src = message.loading;
+            statusMessage.style.cssText = `
+                display: block;
+                margin: 0 auto;
+            `;
+            //form.append(statusMessage);
+            form.insertAdjacentElement('afterend', statusMessage);
             const request = new XMLHttpRequest(); // создаем объект реквест черех хмл
             request.open('POST', 'server.php'); // метод опен служит для настройки поведения запроса
             
@@ -359,18 +360,297 @@ window.addEventListener('DOMContentLoaded', () => {
             request.addEventListener('load', () => {
                 if (request.status === 200) { // проверяем что код успешной отправки передан в статус
                     console.log(request.response);
-                    statusMessage.textContent = message.success; // передаем сообщение с позитивным результатом
+                    showThanksModal(message.success); // передаем сообщение с позитивным результатом
                     form.reset();
-                    setTimeout(() => {
-                        statusMessage.remove();
-                    }, 2000);
+                    statusMessage.remove();
                 } else {
-                    statusMessage.textContent = message.failure;// передаем сообщение с негативным результатом
+                    showThanksModal(message.failure);// передаем сообщение с негативным результатом
                 }
             });
 
         });
     }
+
+    //// Красивое оповещение пользователя 54////
+
+    //окно благодарности///
+    function showThanksModal(message) {
+        const prevModalDialog = document.querySelector('.modal__dialog'); // получаем эдемент обертку нашего окна
+
+        prevModalDialog.classList.add('hide'); //скрываем окно отправки формы
+        openModal();// cнова вызываем функцию открытия модалки
+
+        const thanksModal = document.createElement('div');// создаем новую верстку для благодарственной карточки
+        thanksModal.classList.add('modal__dialog');
+        thanksModal.innerHTML = `
+            <div class = " modal__content ">
+               <div class="modal__close" data-close>X</div>
+               <div class="modal__title" data-close>${message}</div>
+
+            </div>  
+        `;
+
+        document.querySelector('.modal').append(thanksModal);// помещаем верстку в блок модал на странице
+
+        setTimeout(() => { // реализуем возврат к исходному состоянию после отработки благодарности через 4 секунды
+            thanksModal.remove();// удаляем новое оно 
+            prevModalDialog.classList.add('show'); // старому добавляем и убираем классы показа
+            prevModalDialog.classList.remove('hide');
+            closeModal();// закрываем окно 
+        }, 4000);
+
+
+
+    }
+ */
+   //  Работа с формами, отправка данных на сервер 56 переписываем с помощью fetch вместо xmlhttpreq///
+
+   const forms = document.querySelectorAll('form');
+
+   const message = {
+
+        loading: '/icons/spinner.svg',
+        success: 'Спасибо! Скоро с Вами свяжутся!',
+        failure: 'Что то пошло не так...',
+    };
+
+    forms.forEach(item => {//вызываем функцию на каждую форму кторая будет нажата.
+        bindPostData(item);
+    });
+
+
+    const postData = async (url, data) => {// создаем отдельную переменную для функции отправки данных на сервер, она настраивает запрос, отправляет его на сервер, получает ответ и трансформирует его в json 
+
+        const res = await fetch(url, { //задаем аргументы к фетч, это адрес запроса, а вторым это настройки запроса(метод,заголовки, и так далее)
+            method: "POST",// тип запроса
+            headers: {// заголовки зкапроса, какой тип данных  будем отправлять
+                'Content-type': 'application/json'
+            },
+            body: data,// тело запроса, объект, который передается в запрос
+        });
+
+        return await res.json();// возвращается promise, который можно будет отработать методом then/ устанавливаем await , чтобы подождпть пока полученный объект будет обработак и переведен в json
+    };
+
+   function bindPostData(form) {
+       form.addEventListener('submit', (e) => { // для отмены стандартного поведения браузера (перезагрузки страницы) добавляем аргумент e(event) дла дальнейшей отмены стандартного поведения страницы
+            e.preventDefault();// всегда в аджакс запросах отменяем поведение страницы
+
+            const statusMessage = document.createElement('img');// реализуем вывод сообщения пользователю через создание нового блока img и добавления к форме после процесса отправки.
+            statusMessage.src = message.loading;
+            statusMessage.style.cssText = `
+                display: block;
+                margin: 0 auto;
+            `;
+            //form.append(statusMessage);
+            form.insertAdjacentElement('afterend', statusMessage);
+
+
+            // объект форм дата - спец объект для сбора данных с формы , быстрее чем писать самостоятельно
+            const formData = new FormData(form); // для корректной работы всегда должен быть указан атрибут name  в верстке формы! Обязательно!
+            // для перевода данных полученных в формдэйта мы используем такой метод:
+            const json = JSON.stringify(Object.fromEntries(formData.entries()));// мы берем формдэйту,ее сначала превращаем в массив массивов, потом в классический объект, а потом объект в json и далее отправляем на сервер. 
+
+            /*Fetch API предоставляет интерфейс JavaScript для работы с запросами и ответами HTTP. Он также предоставляет глобальный метод fetch(), который позволяет легко и логично получать ресурсы по сети асинхронно.
+
+            Подобная функциональность ранее достигалась с помощью XMLHttpRequest. Fetch представляет собой лучшую альтернативу, которая может быть легко использована другими технологиями, такими как Service Workers. Fetch также обеспечивает единое логическое место для определения других связанных с HTTP понятий, такие как CORS и расширения для HTTP. https://learn.javascript.ru/fetch */
+
+            postData('http://localhost:3000/requests', json)
+            .then(data => { // data это те данные, которые возвращает промис, те те, которые вернул сервер...
+                console.log(data);
+                showThanksModal(message.success); // передаем сообщение с позитивным результатом
+                form.reset();// очищаем форму
+                statusMessage.remove();// удаляем статус
+            }).catch(() => {   //выполняем сценарий на случай ошибки в процессе
+                showThanksModal(message.failure);// передаем сообщение с негативным результатом
+            }).finally(() => {// действие, выполнящееся всегда, вне зависимости от результата в процессе выполнения
+                form.reset();// очищаем форму
+            });
+
+               //ВАЖНО!!! Если fetch в процессе работы попадет на ошибку http протокола, он не будет считать это
+               //ошибкой и продолжит выполнять скрипт дальше и выполнит резолв, он считает, что если запрос выполнить
+               // удалось, то все окей, а ошибка будет если нет сети и не сможет сделать запрос(к примеру!)
+
+        });
+    }
+
+    //// Красивое оповещение пользователя 54////
+
+    //окно благодарности///
+    function showThanksModal(message) {
+        const prevModalDialog = document.querySelector('.modal__dialog'); // получаем эдемент обертку нашего окна
+
+        prevModalDialog.classList.add('hide'); //скрываем окно отправки формы
+        openModal();// cнова вызываем функцию открытия модалки
+
+        const thanksModal = document.createElement('div');// создаем новую верстку для благодарственной карточки
+        thanksModal.classList.add('modal__dialog');
+        thanksModal.innerHTML = `
+            <div class = " modal__content ">
+               <div class="modal__close" data-close>X</div>
+               <div class="modal__title" data-close>${message}</div>
+
+            </div>  
+        `;
+
+        document.querySelector('.modal').append(thanksModal);// помещаем верстку в блок модал на странице
+
+        setTimeout(() => { // реализуем возврат к исходному состоянию после отработки благодарности через 4 секунды
+            thanksModal.remove();// удаляем новое оно 
+            prevModalDialog.classList.add('show'); // старому добавляем и убираем классы показа
+            prevModalDialog.classList.remove('hide');
+            closeModal();// закрываем окно 
+        }, 4000);
+
+
+
+    }
+    // работа с json srever и дазой данных карточек записанных в формате json 58
+
+    fetch('http://localhost:3000/menu') // для того, чтобы осуществлять POST запросы мы обращаемся к нашей базе данных, которая лежит на сервере, в данном случае на нашем сервере json-server
+        .then(data => data.json())
+        .then(res => console.log(res));
+
+    
+    
+    ///Создание слайдера на сайте 1 вариант 61
+
+/*     const slides = document.querySelectorAll('.offer__slide');
+    const prev = document.querySelector('.offer__slider-prev');
+    const next = document.querySelector('.offer__slider-next');
+    const total = document.querySelector('#total');
+    const current = document.querySelector('#current');
+    let slideIndex = 1;
+
+    showSlides(slideIndex);
+    if (slides.length < 10) {
+        total.textContent = `0${slides.length}`
+    } else {
+        total.textContent = slides.length;
+    }
+
+    function showSlides(n) {
+        if (n > slides.length) {
+            slideIndex = 1;
+        }
+
+        
+        if (n < 1) {
+            slideIndex = slides.length;
+        }
+
+        slides.forEach(item => item.style.display = 'none');
+        
+        slides[slideIndex - 1].style.display = 'block';
+        
+         if (slides.length < 10) {
+            current.textContent = `0${slideIndex}`
+        } else {
+            total.textContent = slideIndex;
+        }
+        
+    }
+
+    function plusSlides(n) {
+        showSlides(slideIndex += n);
+    }
+
+    prev.addEventListener('click', function() {
+        plusSlides(-1);
+    });
+    
+    next.addEventListener('click', function() {
+        plusSlides(1);
+    }); */
+
+    // слайдер 2 вариант 62 
+
+    // смысл данной реализации в том, что мы сделаем скрытым все, что выходит за границы блока обертки, и когда будет переключение слайда, то предыдущий будет уходить за пределы блока и скрываться, а новый занимать его окошко.
+
+    const slides = document.querySelectorAll('.offer__slide');
+    const prev = document.querySelector('.offer__slider-prev');
+    const next = document.querySelector('.offer__slider-next');
+    const total = document.querySelector('#total');
+    const current = document.querySelector('#current');
+    const slidesWrapper = document.querySelector('.offer__slider-wrapper');
+    const slidesField = document.querySelector('.offer__slider-inner');
+    const width = window.getComputedStyle(slidesWrapper).width;// мы получаем значение вычесленных стилей со страницы, которые расчитываются из css файла
+
+    let slideIndex = 1;
+    let offset = 0;
+
+    if (slides.length < 10) {
+        total.textContent = `0${slides.length}`
+        current.textContent = `0${slideIndex}`;
+    } else {
+        total.textContent = slides.length;
+        current.textContent = slideIndex;
+    }
+
+    slidesField.style.width = 100 * slides.length + '%';// указываем, что ширина обертки слайдов будет 100 процентов от ширины слайда и умноженное на количество слайдов
+
+    slidesField.style.display = 'flex'; // выстраиваем слайды в линию 
+    slidesField.style.transition = '0.5s all'; // мутим плавное перемещение
+
+    slidesWrapper.style.overflow = 'hidden';
+
+
+
+    slides.forEach(slide => { // каждому слайду добавляем свойство ширины, чтобы они были одной ширины
+        slide.style.width = width;
+
+    });
+
+    next.addEventListener('click', () =>{// мы проверяем, если смещение равно ширине одного слайда умноженное на количество слайдов(кроме первого - начальное состояние) то смещаем на исходное значение 
+        if (offset == +width.slice(0, width.length-2) * (slides.length - 1)) {
+            offset = 0;
+        } else {
+            offset += +width.slice(0, width.length-2);
+        }
+
+        slidesField.style.transform = `translateX(-${offset}px)`
+
+        if (slideIndex == slides.length) {
+
+            slideIndex = 1;
+
+        } else {
+            slideIndex++; 
+        }
+
+        if (slides.length < 10) {
+            current.textContent = `0${slideIndex}`;
+        } else {
+            current.textContent = slideIndex; 
+        }
+
+    });
+    prev.addEventListener('click', () =>{//тут наоборот, если ноль то мы кидаем на последний слайд, а если другое положение но вычитаем ширину слайда
+        if (offset == 0) {
+            offset = +width.slice(0, width.length-2) * (slides.length - 1);
+        } else {
+            offset -= +width.slice(0, width.length-2);
+        }
+
+        slidesField.style.transform = `translateX(-${offset}px)`;
+
+        if (slides.length < 10) {
+            current.textContent = `0${slideIndex}`;
+        } else {
+            current.textContent = slideIndex; 
+        }
+        
+        if (slideIndex == 1) {
+
+            slideIndex = slides.length;
+
+        } else {
+            slideIndex--; 
+        }
+
+    });
+
+
  
 });
 
